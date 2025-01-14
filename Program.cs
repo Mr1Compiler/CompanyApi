@@ -1,4 +1,6 @@
 using CompanyApi.Data;
+using CompanyApi.Services.Departments;
+using CompanyApi.Services.Employees;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -9,6 +11,12 @@ builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+// IEmployeeService
+builder.Services.AddScoped<IEmployeeService, EmployeeService>();
+
+// IDepartmentService
+builder.Services.AddScoped<IDepartmentService, DepartmentService>();
 
 // DbContext
 builder.Services.AddDbContext<ApplicationDbContext>(option =>
