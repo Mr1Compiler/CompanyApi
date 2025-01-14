@@ -7,8 +7,8 @@ namespace CompanyApi.Models.Entities
 	{
 		public int Id { get; set; }
 		[Required]
-		public required string Username { get; set; }
-		public required string Password { get; set; }	
+		public  string Username { get; set; }
+		public  string HashPassword { get; set; }	
 		public string? Name { get; set; }
 		public string Role { get; set; } = "Employee";
 		public DateTime? HireDate { get; set; }
