@@ -2,8 +2,10 @@
 using CompanyApi.Models.DTOs.EmployeeDtos;
 using CompanyApi.Models.DTOs.EmployeeDTOs;
 using CompanyApi.Models.Entities;
+using CompanyApi.Services.Token;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using System.Linq;
 using System.Reflection.Metadata.Ecma335;
 
 namespace CompanyApi.Services.Employees
@@ -11,78 +13,115 @@ namespace CompanyApi.Services.Employees
 	public class EmployeeService : IEmployeeService
 	{
 		private readonly ApplicationDbContext _context;
+		private readonly ITokenService _tokenService;
 
-		public EmployeeService(ApplicationDbContext context)
+		public EmployeeService(ApplicationDbContext context, ITokenService tokenService)
 		{
 			_context = context;
+			_tokenService = tokenService;
 		}
-		public async Task<string> DeleteAsync(int id)
+		public async Task<bool> DeleteAsync(int id)
 		{
 			var emp = await _context.Employees.FindAsync(id);
 
 			if (emp is null)
-				return "Employee not found";
+				return false;
 
-			try
-			{
-				_context.Employees.Remove(emp);
-				await _context.SaveChangesAsync();
-				return "Deleted successfully";
-			}
-			catch (Exception ex)
-			{
-				return "An error occurred while trying to delete the employee. Please try again.";
-			}
+			_context.Employees.Remove(emp);
+
+			if (await _context.SaveChangesAsync() == 0)
+				return false;
+
+			return true;
 		}
 
-		public async Task<IEnumerable<Employee>> GetAllAsync()
+		public async Task<IEnumerable<EmployeeDto>> GetAllAsync()
 		{
-			var employees = _context.Employees.ToListAsync();
+			var employees = await _context.Employees
+				.Include(e => e.Department)
+		   .Select(e => new EmployeeDto
+		   {
+			   Username = e.Username,
+			   Name = e.Name,
+			   Role = e.Role,
+			   DepartmentName = e.Department != null ? e.Department.Name : null,
+		   })
+		   .ToListAsync();
 
-			return await employees;
+
+			return employees;
 		}
 
-		public async Task<Employee?> GetByIdAsync(int id)
+		public async Task<EmployeeDto?> GetByIdAsync(int id)
 		{
 			var emp = await _context.Employees.FindAsync(id);
 
 			if (emp is null)
 				return null;
 
-			return emp;
+			EmployeeDto employee = new()
+			{
+				Name = emp.Name,
+				Role = emp.Role,
+				Username = emp.Username
+			};
+
+			var depInfo = await _context.Departments.FindAsync(emp.DepartmentId);
+
+			if (depInfo is not null)
+				employee.DepartmentName = depInfo.Name;
+
+			return employee;
 		}
 
-		public async Task<Employee?> RegisterAsync(CreateEmployeeDto employee)
+		public async Task<Employee?> RegisterAsync(CreateEmployeeDto employeeDto)
 		{
-			if (employee is null)
+			if (employeeDto is null)
 				return null;
 
-			if (await _context.Employees.AnyAsync(e => e.Username == employee.Username))
+			if (await _context.Employees.AnyAsync(e => e.Username == employeeDto.Username))
 				return null;
 
-			Employee newEmployee = new Employee();
+			Employee newEmployee = new Employee
+			{
+				Name = employeeDto.Name,
+				Username = employeeDto.Username,
+				Role = employeeDto.Role,
+				DepartmentId = employeeDto.DepartmentId,
+				HireDate = DateTime.UtcNow
+			};
 
-			var hashedPassword = new PasswordHasher<Employee>()
-				.HashPassword(newEmployee, employee.Password);
-
-			newEmployee.Name = employee.Name;
-			newEmployee.Username = employee.Username;
+			// Hash the password
+			var hashedPassword = new PasswordHasher<Employee>().HashPassword(newEmployee, employeeDto.Password);
 			newEmployee.HashPassword = hashedPassword;
-			newEmployee.Role = employee.Role;
-			newEmployee.DepartmentId = employee.DepartmentId;
-			newEmployee.HireDate = DateTime.UtcNow;
 
+
+			// Generate tokens
+			var accessToken = await _tokenService.GenerateAccessToken(newEmployee);
+			var refreshToken = await _tokenService.GenerateRefreshToken();
+
+			// Assign tokens to the employee
+			newEmployee.RefreshToken = refreshToken;
+			newEmployee.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7); // Example expiry time
+
+
+			await _context.SaveChangesAsync();
+
+			// Add the employee to the database
 			await _context.Employees.AddAsync(newEmployee);
-
 			if (await _context.SaveChangesAsync() == 0)
 				return null;
 
 			return newEmployee;
 		}
 
+
 		public async Task<Employee?> SignInAsync(SignInDto employee)
 		{
 			var emp = await _context.Employees.FirstOrDefaultAsync(e => e.Username == employee.Username);
+
+			if (emp == null) // Check if the user exists
+				return null;
 
 			var passwordHasher = new PasswordHasher<Employee>();
 			var verificationResult = passwordHasher.VerifyHashedPassword(emp, emp.HashPassword, employee.Password);
@@ -90,17 +129,27 @@ namespace CompanyApi.Services.Employees
 			if (verificationResult == PasswordVerificationResult.Failed)
 				return null;
 
+			// Generate tokens
+			var accessToken = await _tokenService.GenerateAccessToken(emp);
+			var refreshToken = await _tokenService.GenerateRefreshToken();
+
+			// Assign tokens to the employee
+			emp.RefreshToken = refreshToken;
+			emp.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7); // Example expiry time
+
+			// Save changes to the database
+			_context.Employees.Update(emp);
+			await _context.SaveChangesAsync();
+
 			return emp;
 		}
 
-		public async Task<Employee?> UpdateAsync(int id, UpdateEmployeeDto employeeDto)
+
+		public async Task<Employee?> UpdateAsync(UpdateEmployeeDto employeeDto)
 		{
-			var emp = await _context.Employees.FindAsync(id);
+			var emp = await _context.Employees.FirstOrDefaultAsync(e => e.Username == employeeDto.Username);
 
 			if (emp is null)
-				return null;
-
-			if (await _context.Employees.AnyAsync(e => e.Username == emp.Username && e.Id != id) == null)
 				return null;
 
 			emp.Username = employeeDto.Username;
@@ -112,13 +161,22 @@ namespace CompanyApi.Services.Employees
 			{
 				var passwordHasher = new PasswordHasher<Employee>();
 				var hashedPassword = passwordHasher.HashPassword(emp, employeeDto.Password);
-				emp.HashPassword = hashedPassword;  
+				emp.HashPassword = hashedPassword;
 			}
 
-			if (await _context.SaveChangesAsync() == 0)
-				return null; 
+			// Generate tokens
+			var accessToken = await _tokenService.GenerateAccessToken(emp);
+			var refreshToken = await _tokenService.GenerateRefreshToken();
 
-			return emp; 
+			// Assign tokens to the employee
+			emp.RefreshToken = refreshToken;
+			emp.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7); // Example expiry time
+
+
+			if (await _context.SaveChangesAsync() == 0)
+				return null;
+
+			return emp;
 		}
 	}
 }

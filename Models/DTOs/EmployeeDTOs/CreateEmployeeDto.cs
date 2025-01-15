@@ -8,7 +8,6 @@ namespace CompanyApi.Models.DTOs.EmployeeDtos
 		public required string Password { get; set; }
 		public string? Name { get; set; }
 		public string Role { get; set; } = "Employee";
-		public DateTime? HireDate { get; set; } = DateTime.UtcNow;
 		public int DepartmentId { get; set; }
 	}
 }

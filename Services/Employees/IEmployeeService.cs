@@ -8,9 +8,9 @@ namespace CompanyApi.Services.Employees
 	{
 		Task<Employee?> RegisterAsync(CreateEmployeeDto employeeDto);
 		Task<Employee?> SignInAsync(SignInDto signInDto);
-		Task<Employee?> UpdateAsync(int id, UpdateEmployeeDto employeeDto);
-		Task<string> DeleteAsync(int id);
-		Task<Employee?> GetByIdAsync(int id);
-		Task<IEnumerable<Employee>> GetAllAsync(); 
+		Task<Employee?> UpdateAsync(UpdateEmployeeDto employeeDto);
+		Task<bool> DeleteAsync(int id);
+		Task<EmployeeDto?> GetByIdAsync(int id);
+		Task<IEnumerable<EmployeeDto>> GetAllAsync(); 
 	}
 }
