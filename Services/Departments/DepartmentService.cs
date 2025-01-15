@@ -1,5 +1,6 @@
 ﻿using CompanyApi.Data;
 using CompanyApi.Models.DTOs.DepartmentDTOs;
+using CompanyApi.Models.DTOs.EmployeeDtos;
 using CompanyApi.Models.Entities;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Immutable;
@@ -54,27 +55,43 @@ namespace CompanyApi.Services.Departments
 			return false;
 		}
 
-		public async Task<IEnumerable<Department>> GetAllAsync()
+		public async Task<IEnumerable<DepartmentDto>> GetAllAsync()
 		{
-			var Deparments = await _context.Departments.ToListAsync();
+			var departments = await _context.Departments
+				.Include(d => d.Employees)
+				.Select(d => new DepartmentDto
+				{
+					Name = d.Name,
+					Description = d.Description,
+					EmployeesNumber = d.Employees.Count(), 
+				}).ToListAsync();
 
-			if (Deparments is null)
-				return null;
-
-			return Deparments;
+			return departments; 
 		}
 
-		public async Task<Department?> GetByIdAsync(int id)
+		public async Task<DepartmentDto?> GetByIdAsync(int id)
 		{
-			var dep = await _context.Departments.FindAsync(id);
+			var dep = await _context.Departments
+				.Include(d => d.Employees)	
+				.FirstOrDefaultAsync(d => d.Id == id);
 
 			if (dep is null)
 				return null;
 
-			return dep;
+			DepartmentDto department = new()
+			{
+				Name = dep.Name,
+				Description = dep.Description,
+				EmployeesNumber = dep.Employees.Count(),
+			};
+
+			if (department is null)
+				return null;
+
+			return  department;
 		}
 
-		public async Task<Department?> UpdateAsync(int id, UpdateDepartmentDto departmentDto)
+		public async Task<bool?> UpdateAsync(int id, UpdateDepartmentDto departmentDto)
 		{
 			var dep = await _context.Departments.FindAsync(id);
 
@@ -82,15 +99,15 @@ namespace CompanyApi.Services.Departments
 				return null;
 
 			if (await _context.Departments.AnyAsync(d => d.Name == departmentDto.Name && d.Id != id))
-				return null;
+				return false;
 
 			dep.Name = departmentDto.Name;
 			dep.Description = departmentDto.Description;
 
-			if (await _context.SaveChangesAsync() > 0)
-				return dep; 
+			if (await _context.SaveChangesAsync() == 0)
+				return null;
 
-			return null;
+			return true;
 		}
 	}
 }
