@@ -1,11 +1,9 @@
 ﻿using CompanyApi.Models.DTOs.EmployeeDtos;
 using CompanyApi.Models.DTOs.EmployeeDTOs;
-using CompanyApi.Models.Entities;
 using CompanyApi.Services.Employees;
 using CompanyApi.Services.Token;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace CompanyApi.Controllers
 {
@@ -33,7 +31,7 @@ namespace CompanyApi.Controllers
 			if (result == null)
 				return BadRequest("Registration failed or username already exists.");
 
-			return Ok("Employee Created Successfully"); // Returns employee and tokens
+			return Ok(new { result.AccessToken	, result.RefreshToken}); 
 		}
 
 

@@ -6,7 +6,7 @@ namespace CompanyApi.Services.Employees
 {
 	public interface IEmployeeService
 	{
-		Task<Employee?> RegisterAsync(CreateEmployeeDto employeeDto);
+		Task<EmployeeWithTokensDto?> RegisterAsync(CreateEmployeeDto employeeDto);
 		Task<EmployeeWithTokensDto?> SignInAsync(SignInDto signInDto);
 		Task<Employee?> UpdateAsync(UpdateEmployeeDto employeeDto);
 		Task<bool> DeleteAsync(int id);

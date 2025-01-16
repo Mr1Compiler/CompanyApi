@@ -4,10 +4,7 @@ using CompanyApi.Models.DTOs.EmployeeDTOs;
 using CompanyApi.Models.Entities;
 using CompanyApi.Services.Token;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Linq;
-using System.Reflection.Metadata.Ecma335;
 
 namespace CompanyApi.Services.Employees
 {
@@ -75,7 +72,7 @@ namespace CompanyApi.Services.Employees
 			return employee;
 		}
 
-		public async Task<Employee?> RegisterAsync(CreateEmployeeDto employeeDto)
+		public async Task<EmployeeWithTokensDto?> RegisterAsync(CreateEmployeeDto employeeDto)
 		{
 			if (employeeDto is null)
 				return null;
@@ -113,7 +110,12 @@ namespace CompanyApi.Services.Employees
 			if (await _context.SaveChangesAsync() == 0)
 				return null;
 
-			return newEmployee;
+			return new EmployeeWithTokensDto
+			{
+				Username = newEmployee.Username,
+				AccessToken = accessToken,
+				RefreshToken = refreshToken
+			};
 		}
 
 
