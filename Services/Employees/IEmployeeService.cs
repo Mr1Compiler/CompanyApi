@@ -7,9 +7,10 @@ namespace CompanyApi.Services.Employees
 	public interface IEmployeeService
 	{
 		Task<Employee?> RegisterAsync(CreateEmployeeDto employeeDto);
-		Task<Employee?> SignInAsync(SignInDto signInDto);
+		Task<EmployeeWithTokensDto?> SignInAsync(SignInDto signInDto);
 		Task<Employee?> UpdateAsync(UpdateEmployeeDto employeeDto);
 		Task<bool> DeleteAsync(int id);
+		Task<(string newAccessToken, string newRefreshToken)> RefreshTokenAsync(string refreshToken);
 		Task<EmployeeDto?> GetByIdAsync(int id);
 		Task<IEnumerable<EmployeeDto>> GetAllAsync(); 
 	}

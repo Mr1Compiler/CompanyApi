@@ -20,7 +20,7 @@ namespace CompanyApi.Services.Token
 		{
 			var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]));
 
-			var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha512);
+			var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
 			var claims = new[]
 			{
@@ -33,7 +33,7 @@ namespace CompanyApi.Services.Token
 				issuer: _configuration["Jwt:Issuer"],
 				audience: _configuration["Jwt:Audience"],
 				claims: claims,
-				expires: DateTime.UtcNow.AddMinutes(double.Parse(_configuration["Jwt:AccessTokenExpiration"])),
+				expires: DateTime.UtcNow.AddSeconds(double.Parse(_configuration["Jwt:AccessTokenExpiration"])),
 				signingCredentials: creds
 				);
 

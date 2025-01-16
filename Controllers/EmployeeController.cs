@@ -3,10 +3,13 @@ using CompanyApi.Models.DTOs.EmployeeDTOs;
 using CompanyApi.Models.Entities;
 using CompanyApi.Services.Employees;
 using CompanyApi.Services.Token;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace CompanyApi.Controllers
 {
+	[Authorize(Roles = "Employee,Admin,Manager")]
 	[Route("api/[controller]")]
 	[ApiController]
 	public class EmployeeController : ControllerBase
@@ -19,6 +22,7 @@ namespace CompanyApi.Controllers
 			_tokenService = tokenService;
 		}
 
+		[AllowAnonymous]
 		[HttpPost("Register")]
 		[ProducesResponseType(StatusCodes.Status200OK)]
 		[ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -33,10 +37,11 @@ namespace CompanyApi.Controllers
 		}
 
 
+		[AllowAnonymous]
 		[HttpPost("Login")]
 		[ProducesResponseType(StatusCodes.Status200OK)]
 		[ProducesResponseType(StatusCodes.Status400BadRequest)]
-		public async Task<ActionResult> Login(SignInDto employeeDto)
+		public async Task<ActionResult> Login([FromBody] SignInDto employeeDto)
 		{
 			// Authenticate the user and get employee with tokens
 			var employee = await _employeeService.SignInAsync(employeeDto);
@@ -44,10 +49,11 @@ namespace CompanyApi.Controllers
 			if (employee == null)
 				return BadRequest("Invalid username or password!");
 
-			return Ok("Login successful");
+			return Ok(new { employee.AccessToken, employee.RefreshToken });
 		}
 
 
+		[Authorize(Roles = "Admin")]
 		[HttpPut("Update")]
 		[ProducesResponseType(StatusCodes.Status200OK)]
 		[ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -62,6 +68,7 @@ namespace CompanyApi.Controllers
 			return Ok("Updated Successfully");
 		}
 
+		[Authorize(Roles ="Manger")]
 		[HttpDelete("Delete")]
 		[ProducesResponseType(StatusCodes.Status200OK)]
 		[ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -76,6 +83,7 @@ namespace CompanyApi.Controllers
 		}
 
 
+		[Authorize(Roles = "Admin")]
 		[HttpGet("Get")]
 		[ProducesResponseType(StatusCodes.Status200OK)]
 		[ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -89,7 +97,11 @@ namespace CompanyApi.Controllers
 			return Ok(result);
 		}
 
+
+		[Authorize(Roles = "Manager")]
 		[HttpGet("GetAll")]
+		[ProducesResponseType(StatusCodes.Status200OK)]
+		[ProducesResponseType(StatusCodes.Status400BadRequest)]
 		public async Task<ActionResult> GetAll()
 		{
 			var result = await _employeeService.GetAllAsync();
@@ -98,6 +110,23 @@ namespace CompanyApi.Controllers
 				return BadRequest("Something wrong happend!");
 
 			return Ok(result);
+		}
+
+
+		[HttpPost("refresh-token")]
+		[ProducesResponseType(StatusCodes.Status200OK)]
+		[ProducesResponseType(StatusCodes.Status401Unauthorized)]
+		public async Task<IActionResult> RefreshToken([FromBody] string refreshToken)
+		{
+			try
+			{
+				(string newAccessToken, string newRefreshToken) = await _employeeService.RefreshTokenAsync(refreshToken);
+				return Ok(new { AccessToken = newAccessToken, RefreshToken = newRefreshToken });
+			}
+			catch (UnauthorizedAccessException)
+			{
+				return Unauthorized("Invalid or expired refresh token");
+			}
 		}
 
 	}

@@ -4,6 +4,7 @@ using CompanyApi.Models.DTOs.EmployeeDTOs;
 using CompanyApi.Models.Entities;
 using CompanyApi.Services.Token;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
 using System.Reflection.Metadata.Ecma335;
@@ -116,15 +117,15 @@ namespace CompanyApi.Services.Employees
 		}
 
 
-		public async Task<Employee?> SignInAsync(SignInDto employee)
+		public async Task<EmployeeWithTokensDto?> SignInAsync(SignInDto signInEmployee)
 		{
-			var emp = await _context.Employees.FirstOrDefaultAsync(e => e.Username == employee.Username);
+			var  emp = await _context.Employees.FirstOrDefaultAsync(e => e.Username == signInEmployee.Username);
 
-			if (emp == null) // Check if the user exists
+			if(emp == null) 
 				return null;
 
 			var passwordHasher = new PasswordHasher<Employee>();
-			var verificationResult = passwordHasher.VerifyHashedPassword(emp, emp.HashPassword, employee.Password);
+			var verificationResult = passwordHasher.VerifyHashedPassword(emp, emp.HashPassword, signInEmployee.Password);
 
 			if (verificationResult == PasswordVerificationResult.Failed)
 				return null;
@@ -133,17 +134,42 @@ namespace CompanyApi.Services.Employees
 			var accessToken = await _tokenService.GenerateAccessToken(emp);
 			var refreshToken = await _tokenService.GenerateRefreshToken();
 
+			
 			// Assign tokens to the employee
 			emp.RefreshToken = refreshToken;
 			emp.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7); // Example expiry time
-
+			
 			// Save changes to the database
 			_context.Employees.Update(emp);
 			await _context.SaveChangesAsync();
 
-			return emp;
+			return new EmployeeWithTokensDto() 
+			{ 
+				Username = emp.Username,
+				AccessToken = accessToken,
+				RefreshToken = refreshToken
+			};
 		}
 
+		public async Task<(string newAccessToken, string newRefreshToken)> RefreshTokenAsync(string refreshToken)
+		{
+			var employee = await _context.Employees.FirstOrDefaultAsync(e => e.RefreshToken == refreshToken);
+
+			if (employee == null || employee.RefreshTokenExpiryTime <= DateTime.UtcNow)
+				throw new UnauthorizedAccessException("Invalid or expired refresh token");
+
+			var newAccessToken = await _tokenService.GenerateAccessToken(employee);
+			var newRefreshToken = await _tokenService.GenerateRefreshToken();
+
+			// Update the employee's refresh token and expiry time
+			employee.RefreshToken = newRefreshToken;
+			employee.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7); // Adjust as needed
+
+			_context.Employees.Update(employee);
+			await _context.SaveChangesAsync();
+
+			return (newAccessToken, newRefreshToken);
+		}
 
 		public async Task<Employee?> UpdateAsync(UpdateEmployeeDto employeeDto)
 		{

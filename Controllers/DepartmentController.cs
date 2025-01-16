@@ -1,5 +1,6 @@
 ﻿using CompanyApi.Models.DTOs.DepartmentDTOs;
 using CompanyApi.Services.Departments;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Identity.Client;
@@ -8,6 +9,8 @@ using System.Security;
 
 namespace CompanyApi.Controllers
 {
+	
+	[Authorize(Roles = "Admin,Manager")]
 	[Route("api/[controller]")]
 	[ApiController]
 	public class DepartmentController : ControllerBase
