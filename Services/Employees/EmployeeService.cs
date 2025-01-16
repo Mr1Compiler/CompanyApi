@@ -121,9 +121,9 @@ namespace CompanyApi.Services.Employees
 
 		public async Task<EmployeeWithTokensDto?> SignInAsync(SignInDto signInEmployee)
 		{
-			var  emp = await _context.Employees.FirstOrDefaultAsync(e => e.Username == signInEmployee.Username);
+			var emp = await _context.Employees.FirstOrDefaultAsync(e => e.Username == signInEmployee.Username);
 
-			if(emp == null) 
+			if (emp == null)
 				return null;
 
 			var passwordHasher = new PasswordHasher<Employee>();
@@ -134,22 +134,22 @@ namespace CompanyApi.Services.Employees
 
 			// Generate tokens
 			var accessToken = await _tokenService.GenerateAccessToken(emp);
-			var refreshToken = await _tokenService.GenerateRefreshToken();
 
-			
-			// Assign tokens to the employee
-			emp.RefreshToken = refreshToken;
-			emp.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7); // Example expiry time
-			
+			if (emp.RefreshTokenExpiryTime < DateTime.UtcNow)
+			{
+				emp.RefreshToken = await _tokenService.GenerateRefreshToken();
+				emp.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7); // Example expiry time
+			}
+
 			// Save changes to the database
 			_context.Employees.Update(emp);
 			await _context.SaveChangesAsync();
 
-			return new EmployeeWithTokensDto() 
-			{ 
+			return new EmployeeWithTokensDto()
+			{
 				Username = emp.Username,
 				AccessToken = accessToken,
-				RefreshToken = refreshToken
+				RefreshToken = emp.RefreshToken
 			};
 		}
 

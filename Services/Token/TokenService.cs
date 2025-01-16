@@ -18,13 +18,13 @@ namespace CompanyApi.Services.Token
 
 		public async Task<string> GenerateAccessToken(Employee employee)
 		{
-			var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]));
+			var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!));
 
 			var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
 			var claims = new[]
 			{
-				new Claim(ClaimTypes.Name, employee.Name),
+				new Claim(ClaimTypes.Name, employee.Name!),
 				new Claim(ClaimTypes.NameIdentifier, employee.Username),
 				new Claim(ClaimTypes.Role, employee.Role),
 			};
@@ -33,7 +33,7 @@ namespace CompanyApi.Services.Token
 				issuer: _configuration["Jwt:Issuer"],
 				audience: _configuration["Jwt:Audience"],
 				claims: claims,
-				expires: DateTime.UtcNow.AddSeconds(double.Parse(_configuration["Jwt:AccessTokenExpiration"])),
+				expires: DateTime.UtcNow.AddSeconds(double.Parse(_configuration["Jwt:AccessTokenExpiration"]!)),
 				signingCredentials: creds
 				);
 
