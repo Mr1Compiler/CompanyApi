@@ -55,15 +55,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 		};
 	});
 
-
-builder.Services.AddAuthorization(options =>
-{
-	options.AddPolicy("EmployeeAndManager", policy =>
-		policy.RequireAssertion(context =>
-			context.User.IsInRole("Employee") && context.User.IsInRole("Manager")));
-});
-
-
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
