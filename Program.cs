@@ -39,6 +39,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 			ValidateAudience = true,
 			ValidAudience = builder.Configuration["Jwt:Audience"] ?? throw new InvalidOperationException("Audience is not configured."),
 			ValidateLifetime = true,
+			ClockSkew = TimeSpan.Zero,
 			IssuerSigningKey = new SymmetricSecurityKey(
 				Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("Token is not configured."))),
 			ValidateIssuerSigningKey = true,
@@ -54,6 +55,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 			},
 		};
 	});
+
 
 var app = builder.Build();
 

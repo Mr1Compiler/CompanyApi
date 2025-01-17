@@ -138,7 +138,7 @@ namespace CompanyApi.Services.Employees
 			if (emp.RefreshTokenExpiryTime < DateTime.UtcNow)
 			{
 				emp.RefreshToken = await _tokenService.GenerateRefreshToken();
-				emp.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7); // Example expiry time
+				emp.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7); 
 			}
 
 			// Save changes to the database
